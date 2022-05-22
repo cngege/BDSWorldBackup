@@ -23,7 +23,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 #ifdef PLUGIN_AUTHOR
                 { "Author", PLUGIN_AUTHOR },
 #endif // PLUGIN_AUTHOR
-                    //{ "Key", "Value" }
+                { "github", "https://github.com/cngege/BDSWorldBackup" }
             }
         );
         break;
