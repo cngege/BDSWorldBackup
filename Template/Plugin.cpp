@@ -16,14 +16,15 @@
 #include <direct.h>
 #include <filesystem>
 //定时器组件
-#include "CTimer.cpp"
 #include <regex>
+#include <shellapi.h>
+//#include "../bundle/bundle.cpp"
+
 Logger WorldBackupLogger(PLUGIN_NAME);
 
 
 string configpath = "./plugins/BackUpMap/";
 string bakcupPath = "";                                //存档默认备份路径
-string temp       = "";                                //如果要压缩备份、存档的临时存储目录
 
 bool haveHadPlayer = false;
 
@@ -46,6 +47,11 @@ void StartBackup(std::vector<std::string>);
 void split(const std::string&, std::vector<std::string>&, const char);
 void Trimmed_Regex(std::string&);
 int createDirectory(std::string);
+void Zip(std::string, std::string);
+string UtfToGbk(std::string);
+void CALLBACK TimerProc(HWND, UINT, UINT_PTR, DWORD);
+DWORD WINAPI ThreadFun(LPVOID);
+
 
 
 inline void CheckProtocolVersion() {
@@ -90,16 +96,9 @@ void PluginInit()
         c.close();
     }
 
-    //启动一个定时器,定时备份存档
-    
-    TimerManager TM;
-    Timer t(TM);
-    //t.Start(Backup, config["TickTime"]);
-    // TM.run();
-    //t.Stop();
-    
+    CreateThread(NULL, 0, ThreadFun, NULL, 0, NULL);
 
-    //玩家加入服务器事件
+    //玩家加入服务器事件 负责将"有玩家来过服务器"标志位设为true
     if (config["NeedPlayer"])
     {
         Event::PlayerJoinEvent::subscribe([](const Event::PlayerJoinEvent& e) {
@@ -108,29 +107,30 @@ void PluginInit()
         });
     }
 
-    Event::ServerStartedEvent::subscribe([](const Event::ServerStartedEvent& e) {
-        //return true;
-        WorldBackupLogger.warn("开始执行加强版的命令");
-        Level::runcmdEx("save hold");
-
-        auto thread = std::thread([] {
-            Sleep(5000);
-            GetBackupInfo_toBackUp();
-            //Bedrock level/db/001850.ldb:2134616, Bedrock level/db/001851.ldb:2125260, Bedrock level/db/001852.ldb:2116590, Bedrock level/db/001853.ldb:2116126, Bedrock level/db/001854.ldb:2121642, Bedrock level/db/001855.ldb:2135963, Bedrock level/db/001856.ldb:446661, Bedrock level/db/001909.log:0, Bedrock level/db/001910.ldb:202504, Bedrock level/db/CURRENT:16, Bedrock level/db/MANIFEST-001907:796, Bedrock level/level.dat:2508, Bedrock level/level.dat_old:2508, Bedrock level/levelname.txt:13
-            });
-        thread.detach();
-        return true;
-        });
-
-    //auto info = "Bedrock level/db/001850.ldb:2134616, Bedrock level/db/001851.ldb:2125260, Bedrock level/db/001852.ldb:2116590, Bedrock level/db/001853.ldb:2116126, Bedrock level/db/001854.ldb:2121642, Bedrock level/db/001855.ldb:2135963, Bedrock level/db/001856.ldb:446661, Bedrock level/db/001909.log:0, Bedrock level/db/001910.ldb:202504, Bedrock level/db/CURRENT:16, Bedrock level/db/MANIFEST-001907:796, Bedrock level/level.dat:2508, Bedrock level/level.dat_old:2508, Bedrock level/levelname.txt:13";
-    //std::vector<std::string> tokens;
-    //split(info, tokens, ',');
-    //for (auto &v : tokens) {
-    //    Trimmed_Regex(v);
-    //    WorldBackupLogger.info(v);
-    //}
 }
 
+//计时器
+void CALLBACK TimerProc(HWND hwnd, UINT message, UINT_PTR iTimerID, DWORD dwTime)
+{
+    Backup();
+}
+
+DWORD WINAPI ThreadFun(LPVOID pM)
+{
+    MSG msg;
+    SetTimer(NULL, 1, config["TickTime"], TimerProc);
+
+    while (GetMessage(&msg, NULL, NULL, NULL))
+    {
+        if (msg.message == WM_TIMER)
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+    }
+
+    return 0;
+}
 
 /// <summary>
 /// 检查并备份存档
@@ -165,7 +165,13 @@ void Backup()
             haveHadPlayer = false;
         }
     }
-    //StartBackup();
+    WorldBackupLogger.info("开始备份...");
+    Level::runcmdEx("save hold");
+    auto thread = std::thread([] {
+        GetBackupInfo_toBackUp();
+        //Bedrock level/db/001850.ldb:2134616, Bedrock level/db/001851.ldb:2125260, Bedrock level/db/001852.ldb:2116590, Bedrock level/db/001853.ldb:2116126, Bedrock level/db/001854.ldb:2121642, Bedrock level/db/001855.ldb:2135963, Bedrock level/db/001856.ldb:446661, Bedrock level/db/001909.log:0, Bedrock level/db/001910.ldb:202504, Bedrock level/db/CURRENT:16, Bedrock level/db/MANIFEST-001907:796, Bedrock level/level.dat:2508, Bedrock level/level.dat_old:2508, Bedrock level/levelname.txt:13
+        });
+    thread.detach();
 }
 
 /// <summary>
@@ -192,10 +198,10 @@ void GetBackupInfo_toBackUp()
             continue;
         }
         if (i != 1) {
-            WorldBackupLogger.info("第{}/6次查询成功,正在获取可备份文件列表信息,准备备份……");
+            WorldBackupLogger.info("第{}/6次查询成功,正在获取可备份文件列表信息,准备备份...",i);
         }
         else {
-            WorldBackupLogger.info("查询成功,正在获取可备份文件列表信息,准备备份……");
+            WorldBackupLogger.info("查询成功,正在获取可备份文件列表信息,准备备份...");
         }
 
         // 将原始字符串分割出 可备份的文件部分+文件大小
@@ -217,7 +223,7 @@ void GetBackupInfo_toBackUp()
 }
 
 /// <summary>
-/// 正式开始备份存档
+/// 正式开始备份存档，通过官方的可备份信息,复制出相关文件
 /// </summary>
 /// <param name="info">可备份文件的信息</param>
 void StartBackup(std::vector<std::string> info)
@@ -230,9 +236,6 @@ void StartBackup(std::vector<std::string> info)
     
     //备份的目标文件夹
     std::string backup_to = (std::string)config["SavePath"] + timeDir + "/";
-    if (config["Zip"]) {
-        backup_to = (std::string)config["SavePath"] + "Tmp/";
-    }
 
     //分割出文件部分和文件大小部分
     for (auto &f : info) {
@@ -241,11 +244,21 @@ void StartBackup(std::vector<std::string> info)
         std::vector<std::string> t;
         split(f, t, ':');
 
-        auto fp = t.at(0);
+        auto fp = UtfToGbk(t.at(0));
         auto size = std::stoi(t.at(1));
 
-        //备份文件到目标地址 0x00000209a9b7e400 "Bedrock level/db/001850.ldb:2134616" "./plugins/BackUpMap/Tmp/"
-        if (_access(std::string(backup_to + fp).c_str(), 0) == -1)	//表示配置文件所在的文件夹不存在
+        //备份文件到目标地址 0x00000209a9b7e400 "Bedrock level/db/001850.ldb:2134616" "./plugins/BackUpMap/"
+        //if (_access(std::string(backup_to + fp).c_str(), 0) == -1)
+        //{
+        //    if (createDirectory(std::string(backup_to + fp).c_str()) == -1)
+        //    {
+        //        //文件夹创建失败
+        //        WorldBackupLogger.error("备份文件时文件夹创建失败,请检查目标文件夹[{}]是否具有相关权限", backup_to + fp);
+        //        WorldBackupLogger.error("本次备份失败,已终止");
+        //        return;
+        //    }
+        //}
+        if (_access(std::string(backup_to + fp).c_str(), 0) == -1)
         {
             if (createDirectory(std::string(backup_to + fp).c_str()) == -1)
             {
@@ -255,7 +268,6 @@ void StartBackup(std::vector<std::string> info)
                 return;
             }
         }
-
         // 读取文件
         char* tempStr = new char[size];
 
@@ -279,8 +291,12 @@ void StartBackup(std::vector<std::string> info)
 
     //复制完成，判断是否需要压缩
     if (config["Zip"]) {
-        WorldBackupLogger.info("准备创建压缩线程进行打包");
-        WorldBackupLogger.info("压缩完成,本次备份结束");
+        auto thread_zip = std::thread([timeDir] {
+            Zip(timeDir, UtfToGbk(Level::getCurrentLevelName()));
+            WorldBackupLogger.info("后台异步压缩中,本次备份结束");
+            });
+        thread_zip.detach();
+        
     }
 }
 
@@ -337,4 +353,35 @@ int createDirectory(std::string path)
         }
     }
     return 0;
+}
+
+
+
+
+void Zip(std::string timedir, std::string mapdir) {
+    //WorldBackupLogger.info("LevelName：{}",mapdir);
+    
+    char buffer[MAX_PATH];
+    _getcwd(buffer, MAX_PATH);
+    std::string exe_7z = buffer + std::string("/plugins/LiteLoader/7z/7za.exe");
+    std::string p = "a -tzip -sdel \"" + (std::string)config["SavePath"] + timedir + "/" + mapdir + ".zip\" \"" + (std::string)config["SavePath"] + timedir + "/" + mapdir + "\"";
+    HINSTANCE hRet = ShellExecuteA(NULL, "open", exe_7z.c_str(), p.c_str(), NULL, SW_HIDE);
+    if (!hRet) {
+        WorldBackupLogger.info("压缩失败");
+        return;
+    }
+}
+
+string UtfToGbk(std::string strValue)
+{
+    int len = MultiByteToWideChar(CP_UTF8, 0, strValue.c_str(), -1, NULL, 0);
+    wchar_t* wstr = new wchar_t[len + 1];
+    memset(wstr, 0, len + 1);
+    MultiByteToWideChar(CP_UTF8, 0, strValue.c_str(), -1, wstr, len);
+    len = WideCharToMultiByte(CP_ACP, 0, wstr, -1, NULL, 0, NULL, NULL);
+    char* str = new char[len + 1];
+    memset(str, 0, len + 1);
+    WideCharToMultiByte(CP_ACP, 0, wstr, -1, str, len, NULL, NULL);
+    if (wstr) delete[] wstr;
+    return string(str);
 }
