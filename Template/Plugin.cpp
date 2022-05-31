@@ -15,10 +15,9 @@
 #include <io.h>
 #include <direct.h>
 #include <filesystem>
-//定时器组件
+
 #include <regex>
 #include <shellapi.h>
-//#include "../bundle/bundle.cpp"
 
 Logger WorldBackupLogger(PLUGIN_NAME);
 
@@ -364,7 +363,7 @@ void Zip(std::string timedir, std::string mapdir) {
     char buffer[MAX_PATH];
     _getcwd(buffer, MAX_PATH);
     std::string exe_7z = buffer + std::string("/plugins/LiteLoader/7z/7za.exe");
-    std::string p = "a -tzip -sdel \"" + (std::string)config["SavePath"] + timedir + "/" + mapdir + ".zip\" \"" + (std::string)config["SavePath"] + timedir + "/" + mapdir + "\"";
+    std::string p = "a -tzip -sdel -mx5 \"" + (std::string)config["SavePath"] + timedir + "/" + mapdir + ".zip\" \"" + (std::string)config["SavePath"] + timedir + "/" + mapdir + "\"";
     HINSTANCE hRet = ShellExecuteA(NULL, "open", exe_7z.c_str(), p.c_str(), NULL, SW_HIDE);
     if (!hRet) {
         WorldBackupLogger.info("压缩失败");
@@ -372,6 +371,11 @@ void Zip(std::string timedir, std::string mapdir) {
     }
 }
 
+/// <summary>
+/// 转换编码 解决路径中有中文时备份文件名有乱码的情况
+/// </summary>
+/// <param name="strValue"></param>
+/// <returns></returns>
 string UtfToGbk(std::string strValue)
 {
     int len = MultiByteToWideChar(CP_UTF8, 0, strValue.c_str(), -1, NULL, 0);
