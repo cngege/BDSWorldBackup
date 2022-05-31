@@ -18,6 +18,7 @@
 
 #include <regex>
 #include <shellapi.h>
+#include <algorithm>
 
 Logger WorldBackupLogger(PLUGIN_NAME);
 
@@ -50,7 +51,7 @@ void Zip(std::string, std::string);
 string UtfToGbk(std::string);
 void CALLBACK TimerProc(HWND, UINT, UINT_PTR, DWORD);
 DWORD WINAPI ThreadFun(LPVOID);
-
+void Path_Regex(std::string&);
 
 
 inline void CheckProtocolVersion() {
@@ -106,6 +107,19 @@ void PluginInit()
         });
     }
 
+    //后台备份命令
+    Event::ConsoleCmdEvent::subscribe([](const Event::ConsoleCmdEvent& e) {
+        std::string cmd = e.mCommand;
+        std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
+        if (cmd == "backupmap") {
+            if (config["NeedPlayer"]) {
+                haveHadPlayer = true;
+            }
+            Backup();
+            return false;
+        }
+        return true;
+    });
 }
 
 //计时器
@@ -269,16 +283,14 @@ void StartBackup(std::vector<std::string> info)
         }
         // 读取文件
         char* tempStr = new char[size];
-
-        std::ifstream r(("./worlds/" + fp).c_str());
+        std::ifstream r(("./worlds/" + fp).c_str(),std::ios::binary | std::ios::in);
         r.read(tempStr, size);
-        r.close();
-        std::ofstream w((backup_to + fp).c_str());
+        std::ofstream w((backup_to + fp).c_str(), std::ios::binary);
         w.write(tempStr, size);
+        r.close();
         w.close();
         delete[] tempStr;
     }
-    
     //恢复修改
     auto resume = Level::runcmdEx("save resume");
     if (!resume.first) {
@@ -292,10 +304,15 @@ void StartBackup(std::vector<std::string> info)
     if (config["Zip"]) {
         auto thread_zip = std::thread([timeDir] {
             Zip(timeDir, UtfToGbk(Level::getCurrentLevelName()));
-            WorldBackupLogger.info("后台异步压缩中,本次备份结束");
+            WorldBackupLogger.info("压缩完成,本次备份结束");
             });
         thread_zip.detach();
-        
+    }
+    else {
+        std::string path = backup_to + "/" + UtfToGbk(Level::getCurrentLevelName());
+        Path_Regex(path);
+        std::string parameter = "dir \"" + path + "\"";
+        ShellExecuteA(NULL, "open", std::string(config["Run"]).c_str(), parameter.c_str(), NULL, SW_HIDE);
     }
 }
 
@@ -329,6 +346,13 @@ void Trimmed_Regex(std::string& str) {
     str = std::regex_replace(str, e, "$1", std::regex_constants::format_no_copy);
 }
 
+/// <summary>
+/// 将路径中的 / 替换为 \\
+/// </summary>
+/// <param name="str"></param>
+void Path_Regex(std::string& str) {
+    std::replace(str.begin(), str.end(), '/', '\\');
+}
 
 /// <summary>
 /// 创建多级目录 原来的_mkdir只能一层一层的创建
@@ -363,11 +387,16 @@ void Zip(std::string timedir, std::string mapdir) {
     char buffer[MAX_PATH];
     _getcwd(buffer, MAX_PATH);
     std::string exe_7z = buffer + std::string("/plugins/LiteLoader/7z/7za.exe");
-    std::string p = "a -tzip -sdel -mx5 \"" + (std::string)config["SavePath"] + timedir + "/" + mapdir + ".zip\" \"" + (std::string)config["SavePath"] + timedir + "/" + mapdir + "\"";
-    HINSTANCE hRet = ShellExecuteA(NULL, "open", exe_7z.c_str(), p.c_str(), NULL, SW_HIDE);
-    if (!hRet) {
-        WorldBackupLogger.info("压缩失败");
-        return;
+    std::string p = "a -tzip -mx5 -sdel \"" + (std::string)config["SavePath"] + timedir + "/" + mapdir + ".zip\" \"" + (std::string)config["SavePath"] + timedir + "/" + mapdir + "\"";
+    // 运行7za.exe 压缩程序
+    system((exe_7z + " " + p + " >nul").c_str());
+
+    //运行自定义程序
+    if (config["Run"] != "")
+    {
+        std::string path = "zip \"" + (std::string)config["SavePath"] + timedir + "/" + mapdir + ".zip\"";
+        Path_Regex(path);
+        ShellExecuteA(NULL, "open", std::string(config["Run"]).c_str(), path.c_str(), NULL, SW_HIDE);
     }
 }
 

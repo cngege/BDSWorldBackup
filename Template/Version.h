@@ -9,7 +9,7 @@
 #define PLUGIN_INTRODUCTION         "LL_我的世界官方服务端存档热备份"
 #define PLUGIN_AUTHOR               "CNGEGE"
 #define PLUGIN_VERSION_MAJOR        1
-#define PLUGIN_VERSION_MINOR        1
+#define PLUGIN_VERSION_MINOR        3
 #define PLUGIN_VERSION_REVISION     0
 #define PLUGIN_VERSION_BUILD        0
 #define PLUGIN_VERSION_STATUS       PLUGIN_VERSION_DEV
