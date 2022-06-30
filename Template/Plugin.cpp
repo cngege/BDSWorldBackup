@@ -235,6 +235,21 @@ void GetBackupInfo_toBackUp()
     return;
 }
 
+
+std::string getTimeDirName(time_t now) {
+    tm* ltm = localtime(&now);
+    std::string timeDir = std::to_string(ltm->tm_year + 1900) + "-";    //年
+    timeDir += ((ltm->tm_mon + 1 < 10)?("0"+ std::to_string(ltm->tm_mon + 1)) : std::to_string(ltm->tm_mon + 1)) + "-";                   //月
+    timeDir += (ltm->tm_mday < 10)?("0"+std::to_string(ltm->tm_mday)) : std::to_string(ltm->tm_mday);                            //日
+
+    timeDir += "_";
+
+    timeDir += ((ltm->tm_hour<10)?("0"+std::to_string(ltm->tm_hour)): std::to_string(ltm->tm_hour)) + "-";                      //时
+    timeDir += ((ltm->tm_min < 10)?("0"+std::to_string(ltm->tm_min)): std::to_string(ltm->tm_min)) + "-";                       //分
+    timeDir += (ltm->tm_sec < 10)?("0"+ std::to_string(ltm->tm_sec)):std::to_string(ltm->tm_sec);                             //秒
+    return timeDir;
+}
+
 /// <summary>
 /// 正式开始备份存档，通过官方的可备份信息,复制出相关文件
 /// </summary>
@@ -242,11 +257,11 @@ void GetBackupInfo_toBackUp()
 void StartBackup(std::vector<std::string> info)
 {
     //时间构成的文件夹名
-    time_t now = time(0);
-    tm* ltm = localtime(&now);
-    std::string timeDir = std::to_string(ltm->tm_year+1900) + "_" + std::to_string(ltm->tm_mon+1) + "_" + std::to_string(ltm->tm_mday);
-    timeDir += "__" + std::to_string(ltm->tm_hour) + "_" + std::to_string(ltm->tm_min) + "_" + std::to_string(ltm->tm_sec);
-    
+    //time_t now = time(0);
+    //tm* ltm = localtime(&now);
+    //std::string timeDir = std::to_string(ltm->tm_year+1900) + "_" + std::to_string(ltm->tm_mon+1) + "_" + std::to_string(ltm->tm_mday);
+    //timeDir += "__" + std::to_string(ltm->tm_hour) + "_" + std::to_string(ltm->tm_min) + "_" + std::to_string(ltm->tm_sec);
+    std::string timeDir = getTimeDirName(time(0));
     //备份的目标文件夹
     std::string backup_to = (std::string)config["SavePath"] + timeDir + "/";
 
@@ -361,7 +376,7 @@ void Path_Regex(std::string& str) {
 /// <returns></returns>
 int createDirectory(std::string path)
 {
-    int len = path.length();
+    auto len = path.length();
     char tmpDirPath[256] = { 0 };
     for (int i = 0; i < len; i++)
     {

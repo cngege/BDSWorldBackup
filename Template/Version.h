@@ -9,10 +9,10 @@
 #define PLUGIN_INTRODUCTION         "LL_我的世界官方服务端存档热备份"
 #define PLUGIN_AUTHOR               "CNGEGE"
 #define PLUGIN_VERSION_MAJOR        1
-#define PLUGIN_VERSION_MINOR        3
+#define PLUGIN_VERSION_MINOR        4
 #define PLUGIN_VERSION_REVISION     0
-#define PLUGIN_VERSION_BUILD        0
-#define PLUGIN_VERSION_STATUS       PLUGIN_VERSION_DEV
+#define PLUGIN_VERSION_BUILD        1
+#define PLUGIN_VERSION_STATUS       PLUGIN_VERSION_RELEASE
 
 //#define TARGET_BDS_PROTOCOL_VERSION 503
 // used by github actions(TODO)
