@@ -11,14 +11,15 @@
 #include "Version.h"
 #include <LLAPI.h>
 #include <ServerAPI.h>
-#include <MC/Json.hpp>
 #include <io.h>
 #include <direct.h>
 #include <filesystem>
 
 #include <regex>
+#include <Windows.h>
 #include <shellapi.h>
 #include <algorithm>
+#include <Nlohmann/json.hpp>
 
 Logger WorldBackupLogger(PLUGIN_NAME);
 
@@ -27,6 +28,8 @@ string configpath = "./plugins/BackUpMap/";
 string bakcupPath = "";                                //存档默认备份路径
 
 bool haveHadPlayer = false;
+
+using json = nlohmann::json;
 
 json config = R"(
 {
@@ -53,6 +56,7 @@ void CALLBACK TimerProc(HWND, UINT, UINT_PTR, DWORD);
 DWORD WINAPI ThreadFun(LPVOID);
 void Path_Regex(std::string&);
 
+void AutoUprade(const std::string);
 
 inline void CheckProtocolVersion() {
 #ifdef TARGET_BDS_PROTOCOL_VERSION
@@ -71,6 +75,7 @@ inline void CheckProtocolVersion() {
 void PluginInit()
 {
     CheckProtocolVersion();
+    AutoUprade("4186");
     //判断是否存在配置文件 没有则创建，有则读取并保存到config
     //检查配置文件夹是否存在
     if (_access(configpath.c_str(), 0) == -1)	//表示配置文件所在的文件夹不存在
@@ -424,11 +429,11 @@ string UtfToGbk(std::string strValue)
 {
     int len = MultiByteToWideChar(CP_UTF8, 0, strValue.c_str(), -1, NULL, 0);
     wchar_t* wstr = new wchar_t[len + 1];
-    memset(wstr, 0, len + 1);
+    memset(wstr, 0, static_cast<size_t>(len) + 1);
     MultiByteToWideChar(CP_UTF8, 0, strValue.c_str(), -1, wstr, len);
     len = WideCharToMultiByte(CP_ACP, 0, wstr, -1, NULL, 0, NULL, NULL);
     char* str = new char[len + 1];
-    memset(str, 0, len + 1);
+    memset(str, 0, static_cast<size_t>(len) + 1);
     WideCharToMultiByte(CP_ACP, 0, wstr, -1, str, len, NULL, NULL);
     if (wstr) delete[] wstr;
     return string(str);
