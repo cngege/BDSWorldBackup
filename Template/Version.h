@@ -22,7 +22,7 @@
 // to https://semver.org/ .
 #define PLUGIN_VERSION_MAJOR        1
 #define PLUGIN_VERSION_MINOR        4
-#define PLUGIN_VERSION_REVISION     2
+#define PLUGIN_VERSION_REVISION     3
 #define PLUGIN_VERSION_BUILD        0
 #define PLUGIN_VERSION_ACTIONS		0
 

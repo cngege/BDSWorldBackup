@@ -70,8 +70,6 @@ inline void CheckProtocolVersion() {
 #endif // TARGET_BDS_PROTOCOL_VERSION
 }
 
-
-
 void PluginInit()
 {
     CheckProtocolVersion();
@@ -397,9 +395,6 @@ int createDirectory(std::string path)
     }
     return 0;
 }
-
-
-
 
 void Zip(std::string timedir, std::string mapdir) {
     //WorldBackupLogger.info("LevelName：{}",mapdir);
